@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AAC com Eye Tracking</title>
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      background-color: #6200ea;
+      color: white;
+      padding: 1rem;
+      margin: 0;
+    }
+    #output {
+      font-size: 1.5rem;
+      margin: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      min-height: 3rem;
+    }
+    .keyboard {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 10px;
+      max-width: 90%;
+      margin: auto;
+    }
+    .key {
+      padding: 20px;
+      background-color: white;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+      font-size: 1.2rem;
+      user-select: none;
+    }
+    .key.gazed {
+      background-color: #bb86fc;
+    }
+    button, select {
+      padding: 1rem;
+      margin: 0.5rem;
+      font-size: 1.2rem;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #controls {
+      margin: 1rem auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>AAC com Eye Tracking</h1>
+
+  <div id="output"></div>
+
+  <div id="controls">
+    <label for="tempo">⏱️ Tempo de foco (segundos):</label>
+    <select id="tempo" onchange="atualizarTempo()">
+      <option value="300">0.3s</option>
+      <option value="500">0.5s</option>
+      <option value="1000" selected>1.0s</option>
+      <option value="1500">1.5s</option>
+      <option value="2000">2.0s</option>
+    </select>
+
+    <button onclick="iniciarCalibragem()">🎯 Calibrar Olhar</button>
+    <button onclick="falar()">🔊 Falar</button>
+    <button onclick="limpar()">🗑️ Limpar</button>
+  </div>
+
+  <div class="keyboard" id="keyboard"></div>
+
+  <script>
+    const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const output = document.getElementById("output");
+    const teclado = document.getElementById("keyboard");
+    let tempoFoco = 1000;
+    let focando = null;
+    let timer = null;
+
+    function atualizarTempo() {
+      const valor = document.getElementById("tempo").value;
+      tempoFoco = parseInt(valor);
+    }
+
+    letras.forEach(l => {
+      const btn = document.createElement('div');
+      btn.className = 'key';
+      btn.innerText = l;
+      btn.id = `key-${l}`;
+      teclado.appendChild(btn);
+    });
+
+    function limpar() {
+      output.innerText = "";
+    }
+
+    function falar() {
+      const msg = new SpeechSynthesisUtterance(output.innerText);
+      msg.lang = 'pt-BR';
+      speechSynthesis.speak(msg);
+    }
+
+    function iniciarCalibragem() {
+      alert("Siga os pontos com os olhos para calibrar.");
+      webgazer.clearData();
+      webgazer.begin();
+      webgazer.showPredictionPoints(true);
+      webgazer.showVideoPreview(true)
+              .showFaceOverlay(true)
+              .showFaceFeedbackBox(true);
+    }
+
+    webgazer.setGazeListener((data, elapsedTime) => {
+      if (!data) return;
+      const x = data.x;
+      const y = data.y;
+      const elem = document.elementFromPoint(x, y);
+
+      if (elem && elem.classList.contains('key')) {
+        if (focando !== elem.id) {
+          clearTimeout(timer);
+          document.querySelectorAll('.key').forEach(k => k.classList.remove('gazed'));
+          focando = elem.id;
+          elem.classList.add('gazed');
+          timer = setTimeout(() => {
+            output.innerText += elem.innerText;
+            elem.classList.remove('gazed');
+            focando = null;
+          }, tempoFoco);
+        }
+      } else {
+        focando = null;
+        document.querySelectorAll('.key').forEach(k => k.classList.remove('gazed'));
+        clearTimeout(timer);
+      }
+    });
+
+    webgazer.showVideoPreview(false)
+            .showFaceOverlay(false)
+            .showFaceFeedbackBox(false);
+    webgazer.begin();
+  </script>
+</body>
+</html>
